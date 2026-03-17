@@ -1,3 +1,24 @@
+import os
+from dotenv import load_dotenv
+
+# Load the .env file
+load_dotenv()
+
+# Use variables in your code
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-if-not-found')
+DEBUG = True 
+
+# Database Configuration using .env
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
+    }
+}
 """
 Django settings for rejea project.
 
@@ -25,7 +46,8 @@ SECRET_KEY = 'django-insecure-$0*j-g1iz9h%nf#wz-)^z+ycjmx-bcb3u_2w*)5$&bt@o3us1n
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'https://unsinewed-dumpily-muriel.ngrok-free.dev/.ngrok-free.app'] 
+
 
 
 # Application definition
@@ -39,10 +61,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rejea_app',
     'accounts',
+    'corsheaders', # Add this
+    'trips',
+    'payments',
 ]
 AUTH_USER_MODEL = 'accounts.User'  # Use the custom user model
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -50,6 +76,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'rejea.urls'
@@ -104,6 +131,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 
