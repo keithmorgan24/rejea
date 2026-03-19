@@ -1,146 +1,127 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-// import './App.css'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './components/Home';
-import Register from './components/register'
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import api from './api';
+
+// Authentication & Onboarding
 import Login from './components/Login';
+import Register from './components/Register';
+import VerificationPendingView from './components/VerificationPendingView';
+
+// Dashboards
 import DriverDash from './components/DriverDash';
 import PassengerDash from './components/PassengerDash';
-import Trips from './components/Trips'; // Adjust path if needed
 
-function App() {
+// Profile & History
+import DriverProfile from './components/DriverProfile';
+import PassengerHistory from './components/PassengerHistory';
+import SeatGrid from './components/SeatGrid';
+
+// Navigation
+import Navbar from './components/Navbar';
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // 1. Session Persistence: Check if user is logged in on refresh
+  const checkAuth = async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const res = await api.get('/accounts/profile/');
+        setUser(res.data);
+      } catch (err) {
+        console.error("Session expired or invalid");
+        localStorage.removeItem('token');
+        setUser(null);
+      }
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  // 2. Helper to update user state immediately after Login.jsx succeeds
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+  };
+
+  if (loading) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-green-500"></div>
+    </div>
+  );
+
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/driver-dashboard" element={<DriverDash />} />
-        <Route path="/passenger-dashboard" element={<PassengerDash />} />
-        <Route path="/trips" element={<Trips />} /> {/* Check this line */}
-        {/* I added a route for your Vite code so you can still access it */}
-        <Route path="/welcome" element={<ViteWelcome />} />
-      </Routes>
+      <div className={`min-h-screen bg-zinc-950 text-zinc-100 ${user ? 'pb-24' : ''}`}>
+        <Routes>
+          {/* --- PUBLIC ROUTES --- */}
+          {/* We pass handleLoginSuccess here so Login.jsx can update the 'user' state */}
+          <Route 
+            path="/login" 
+            element={!user ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} 
+          />
+          <Route 
+            path="/register" 
+            element={!user ? <Register /> : <Navigate to="/" />} 
+          />
+
+          {/* --- CENTRAL TRAFFIC CONTROLLER --- */}
+          <Route path="/" element={
+            user ? (
+              user.user_type === 'driver' ? (
+                user.is_verified ? <Navigate to="/driver-dashboard" /> : <Navigate to="/pending" />
+              ) : (
+                <Navigate to="/passenger-dashboard" />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } />
+
+          {/* --- DRIVER ROUTES --- */}
+          <Route path="/driver-dashboard" element={
+            user?.user_type === 'driver' && user.is_verified 
+            ? <DriverDash user={user} /> 
+            : <Navigate to="/" />
+          } />
+
+          <Route path="/pending" element={
+            user?.user_type === 'driver' && !user.is_verified 
+            ? <VerificationPendingView setUser={setUser} /> 
+            : <Navigate to="/" />
+          } />
+
+          {/* --- PASSENGER ROUTES --- */}
+          <Route path="/passenger-dashboard" element={
+            user?.user_type === 'passenger' ? <PassengerDash user={user} /> : <Navigate to="/" />
+          } />
+
+          <Route path="/trips/:tripId/seats" element={
+            user ? <SeatGrid /> : <Navigate to="/login" />
+          } />
+
+          <Route path="/history" element={
+            user?.user_type === 'passenger' ? <PassengerHistory /> : <Navigate to="/" />
+          } />
+
+          {/* --- SHARED PROFILE ROUTE --- */}
+          <Route path="/profile" element={
+            user ? <DriverProfile user={user} /> : <Navigate to="/login" />
+          } />
+
+          {/* Catch-all for 404s */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+
+        {/* Persistent Bottom Navbar */}
+        {user && <Navbar userType={user.user_type} />}
+      </div>
     </Router>
   );
-}
-
-// Renamed this from "App" to "ViteWelcome" to fix the SyntaxError
-function ViteWelcome() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
+};
 
 export default App;

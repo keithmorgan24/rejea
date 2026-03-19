@@ -1,156 +1,176 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowRight, User, Truck } from 'lucide-react';
-import api from '../api';
-
+import api from '../api'; // Your Axios instance
+import { User, Truck, ShieldCheck, Mail, Lock, UserCircle, Phone } from 'lucide-react';
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    phone: '',
-    password: '',
-    role: 'passenger' 
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        username: '',
+        email: '',
+        password: '',
+        phone_number: '',
+        user_type: 'passenger', // Default role
+        id_number: '',
+        license_number: ''
+    });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      await api.post('/accounts/register/', formData);
-      navigate('/'); 
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleRoleSelect = (role) => {
+        setFormData({ ...formData, user_type: role });
+    };
 
-  return (
-    <div className="flex min-h-screen bg-white">
-      {/* Branding Side */}
-      <div className="hidden lg:flex w-1/2 bg-zinc-950 flex-col justify-between p-12">
-        <h1 className="text-white text-3xl font-black italic tracking-tighter">REJEA SWIFT</h1>
-        <div className="text-white">
-          <h2 className="text-6xl font-extrabold mb-6 leading-tight">Travel better. <br/> Pay faster.</h2>
-          <p className="text-zinc-500 text-xl">The future of Kenyan transport, powered by M-Pesa.</p>
-        </div>
-        <div className="flex items-center gap-3 text-zinc-600 text-sm font-medium">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-          Secure Daraja API Integration Active
-        </div>
-      </div>
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            await api.post('/accounts/register/', formData);
+            alert("Registration successful! Please login to continue.");
+            navigate('/login');
+        } catch (error) {
+            console.error("Registration Error:", error.response?.data);
+            alert(error.response?.data?.error || "Registration failed. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-      {/* Form Side */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8">
-        <div className="w-full max-w-md">
-          <div className="mb-8">
-            <h3 className="text-3xl font-bold text-zinc-900 mb-2">Create Account</h3>
-            <p className="text-zinc-500">Join the Rejea ecosystem today.</p>
-          </div>
+    return (
+        <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
+            <div className="w-full max-w-xl bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
+                <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold tracking-tight text-white">Create Account</h1>
+                    <p className="text-zinc-400 mt-2">Join the Rejea Swift transport network</p>
+                </div>
 
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-xl mb-6 text-sm">
-              {error}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* Role Selector */}
+                    <div className="flex gap-4 mb-8">
+                        <button
+                            type="button"
+                            onClick={() => handleRoleSelect('passenger')}
+                            className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+                                formData.user_type === 'passenger' 
+                                ? 'border-green-500 bg-green-500/10 text-green-500' 
+                                : 'border-zinc-800 bg-zinc-800/50 text-zinc-500'
+                            }`}
+                        >
+                            <User size={24} />
+                            <span className="font-semibold">Passenger</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleRoleSelect('driver')}
+                            className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+                                formData.user_type === 'driver' 
+                                ? 'border-green-500 bg-green-500/10 text-green-500' 
+                                : 'border-zinc-800 bg-zinc-800/50 text-zinc-500'
+                            }`}
+                        >
+                            <Truck size={24} />
+                            <span className="font-semibold">Driver</span>
+                        </button>
+                    </div>
+
+                    {/* Standard Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="relative">
+                            <UserCircle className="absolute left-3 top-3.5 text-zinc-500" size={18} />
+                            <input
+                                name="username"
+                                type="text"
+                                placeholder="Username"
+                                required
+                                onChange={handleChange}
+                                className="w-full bg-zinc-800 border-none rounded-xl py-3 pl-10 pr-4 focus:ring-2 ring-green-500 outline-none"
+                            />
+                        </div>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-3.5 text-zinc-500" size={18} />
+                            <input
+                                name="phone_number"
+                                type="text"
+                                placeholder="Phone Number"
+                                required
+                                onChange={handleChange}
+                                className="w-full bg-zinc-800 border-none rounded-xl py-3 pl-10 pr-4 focus:ring-2 ring-green-500 outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 text-zinc-500" size={18} />
+                        <input
+                            name="email"
+                            type="email"
+                            placeholder="Email Address"
+                            required
+                            onChange={handleChange}
+                            className="w-full bg-zinc-800 border-none rounded-xl py-3 pl-10 pr-4 focus:ring-2 ring-green-500 outline-none"
+                        />
+                    </div>
+
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-3.5 text-zinc-500" size={18} />
+                        <input
+                            name="password"
+                            type="password"
+                            placeholder="Password"
+                            required
+                            onChange={handleChange}
+                            className="w-full bg-zinc-800 border-none rounded-xl py-3 pl-10 pr-4 focus:ring-2 ring-green-500 outline-none"
+                        />
+                    </div>
+
+                    {/* Conditional Driver Requirements */}
+                    {formData.user_type === 'driver' && (
+                        <div className="p-5 bg-zinc-950/50 border border-zinc-800 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                                <ShieldCheck size={18} />
+                                <span className="text-sm font-medium">Driver Verification Required</span>
+                            </div>
+                            <input
+                                name="id_number"
+                                type="text"
+                                placeholder="National ID Number"
+                                required
+                                onChange={handleChange}
+                                className="w-full bg-zinc-800 border-none rounded-xl py-3 px-4 focus:ring-2 ring-green-500 outline-none"
+                            />
+                            <input
+                                name="license_number"
+                                type="text"
+                                placeholder="Driving License Number"
+                                required
+                                onChange={handleChange}
+                                className="w-full bg-zinc-800 border-none rounded-xl py-3 px-4 focus:ring-2 ring-green-500 outline-none"
+                            />
+                            <p className="text-[10px] text-zinc-500 italic">
+                                * Your account will remain 'Pending' until admin verifies these credentials.
+                            </p>
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-green-600 hover:bg-green-500 disabled:bg-zinc-700 text-black font-bold py-4 rounded-xl transition-all transform active:scale-[0.98] shadow-lg shadow-green-900/20"
+                    >
+                        {loading ? "Creating Account..." : "Register Now"}
+                    </button>
+
+                    <p className="text-center text-zinc-500 text-sm mt-4">
+                        Already have an account? <Link to="/login" className="text-green-500 hover:underline">Log in</Link>
+                    </p>
+                </form>
             </div>
-          )}
-
-          <form onSubmit={handleRegister} className="space-y-6">
-            {/* FIXED Role Switcher */}
-            <div className="flex bg-zinc-100 p-1.5 rounded-2xl gap-2 shadow-inner border border-zinc-200">
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, role: 'passenger'})}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-black transition-all duration-300 ${
-                  formData.role === 'passenger' 
-                  ? 'bg-green-600 text-white shadow-lg scale-100' 
-                  : 'text-zinc-400 hover:text-zinc-600'
-                }`}
-              >
-                <User size={18} strokeWidth={3} /> PASSENGER
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, role: 'driver'})}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-black transition-all duration-300 ${
-                  formData.role === 'driver' 
-                  ? 'bg-zinc-900 text-white shadow-lg scale-100' 
-                  : 'text-zinc-400 hover:text-zinc-600'
-                }`}
-              >
-                <Truck size={18} strokeWidth={3} /> DRIVER
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                placeholder="Username"
-                className="w-full p-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl outline-none focus:border-green-600 focus:bg-white transition-all"
-                onChange={handleChange}
-                required
-              />
-              <input
-                type="text"
-                name="phone"
-                value={formData.phone}
-                placeholder="M-Pesa Number (254...)"
-                className="w-full p-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl outline-none focus:border-green-600 focus:bg-white transition-all"
-                onChange={handleChange}
-                required
-              />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                placeholder="Email Address"
-                className="w-full p-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl outline-none focus:border-green-600 focus:bg-white transition-all"
-                onChange={handleChange}
-                required
-              />
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                placeholder="Password"
-                className="w-full p-4 bg-zinc-50 border-2 border-zinc-100 rounded-2xl outline-none focus:border-green-600 focus:bg-white transition-all"
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            {/* TOGGLE button color based on role */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-5 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-all active:scale-[0.97] disabled:bg-zinc-200 ${
-                formData.role === 'passenger' ? 'bg-green-600 hover:bg-green-700' : 'bg-zinc-900 hover:bg-zinc-800'
-              }`}
-            >
-              {loading ? 'Creating Account...' : (
-                <> GET STARTED <ArrowRight size={20} /> </>
-              )}
-            </button>
-          </form>
-
-          <p className="mt-8 text-center text-zinc-500 font-medium">
-            Member already? <Link to="/login" className="text-green-600 font-bold hover:underline"> Sign In</Link>
-          </p>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Register;

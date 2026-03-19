@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Armchair, SteeringWheel, Info, CheckCircle2 } from 'lucide-react';
+import { Armchair, CircleUser, Info, CheckCircle2 } from 'lucide-react';
 import api from '../api';
 
 const SeatGrid = () => {
@@ -52,7 +52,7 @@ const SeatGrid = () => {
             <div className="flex justify-between items-center mb-12">
               <h2 className="text-2xl font-black italic">SELECT YOUR SEAT</h2>
               <div className="bg-zinc-900 p-2 rounded-lg text-white">
-                <SteeringWheel size={24} />
+                <CircleUser size={24} />
               </div>
             </div>
 
@@ -100,7 +100,7 @@ const SeatGrid = () => {
                   </div>
                   <div className="bg-zinc-800 p-4 rounded-2xl flex items-start gap-3">
                     <Info size={16} className="text-green-500 mt-1" />
-                    <p className="text-xs text-zinc-400">This seat will be reserved for 10 minutes once you proceed to payment.</p>
+                    <p className="text-xs text-zinc-400">This seat will be reserved for 5 minutes once you proceed to payment.</p>
                   </div>
                   <button 
                     onClick={handleLockSeat}

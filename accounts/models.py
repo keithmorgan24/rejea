@@ -1,23 +1,53 @@
-from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class User(AbstractUser):
-    # This allows one login system for both dashboards
+    """
+    Custom User model for Rejea.
+    """
+    email = models.EmailField(unique=True)
+    
+    # These fields match your database constraints
     is_driver = models.BooleanField(default=False)
-    is_passenger = models.BooleanField(default=True)
-    phone_number = models.CharField(max_length=15, unique=True, null=True)
+    is_passenger = models.BooleanField(default=False) 
+
     def __str__(self):
         return self.username
 
+class UserProfile(models.Model):
+    ROLE_CHOICES = (
+        ('passenger', 'Passenger'),
+        ('driver', 'Driver'),
+    )
 
-class DriverProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='driver_profile')
-    license_number = models.CharField(max_length=50)
-    is_active = models.BooleanField(default=False)
-    # Add any other driver-specific fields here
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user_type = models.CharField(max_length=20, choices=ROLE_CHOICES, default='passenger')
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
     
+    # Verification Fields
+    is_verified = models.BooleanField(default=False)
+    id_number = models.CharField(max_length=20, blank=True, null=True, unique=True)
+    license_number = models.CharField(max_length=20, blank=True, null=True, unique=True)
+    
+    # Image Storage (Requires Pillow: pip install Pillow)
+    license_image = models.ImageField(upload_to='verification/licenses/', blank=True, null=True)
+    profile_photo = models.ImageField(upload_to='verification/profiles/', blank=True, null=True)
+    
+    date_joined = models.DateTimeField(auto_now_add=True)
+
     def __str__(self):
-        return self.user.username
+        status = "VERIFIED" if self.is_verified else "PENDING"
+        return f"{self.user.username} | {self.user_type.upper()} | {status}"
 
+# --- SIGNALS (FIXED VERSION) ---
 
-
+@receiver(post_save, sender=User)
+def create_or_save_user_profile(sender, instance, created, **kwargs):
+    if created:
+        # Use get_or_create to prevent "duplicate key" if profile already exists
+        UserProfile.objects.get_or_create(user=instance)
+    # Only save if the profile actually exists to avoid errors
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
