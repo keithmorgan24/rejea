@@ -1,3 +1,6 @@
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
 import base64
 from datetime import datetime
 import requests
@@ -77,3 +80,20 @@ class RegisterView(APIView):
         # This is where you'd handle user registration
         # For simplicity, let's just return a success message
         return Response({"message": "User registered successfully!"})
+class CustomLoginView(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        
+        # Get the user type from the profile
+        user_type = getattr(user.profile, 'user_type', 'passenger')
+        
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'username': user.username,
+            'user_type': user_type
+        })

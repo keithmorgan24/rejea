@@ -1,71 +1,88 @@
+from django.contrib.auth import authenticate
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from .models import UserProfile
 
+# Get the active User model (your custom accounts.User)
+User = get_user_model()
+
 class UserProfileSerializer(serializers.ModelSerializer):
-    # Pulling username and email from the linked User model
+    """
+    Standard profile view for passengers and general display.
+    """
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
         model = UserProfile
         fields = [
-            'username', 
-            'email', 
-            'phone_number', 
-            'user_type', 
-            'is_verified', 
-            'id_number', 
-            'license_number', 
-            'license_image',
-            'profile_photo'
+            'username', 'email', 'phone_number', 'user_type', 
+            'is_verified', 'id_number', 'license_number', 
+            'license_image', 'profile_photo'
         ]
-        # Security: Prevent users from verifying themselves via the API
         read_only_fields = ['is_verified', 'user_type']
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    # Ensure these match what your React frontend sends in 'payload'
+    user_type = serializers.CharField(write_only=True, default='passenger')
+    phone_number = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = User
-        fields = ['username', 'password', 'email']
+        fields = ['username', 'password', 'email', 'user_type', 'phone_number']
 
     def create(self, validated_data):
-        # Using create_user ensures the password is encrypted (hashed)
+        user_type = validated_data.pop('user_type', 'passenger')
+        phone_number = validated_data.pop('phone_number', "")
+
+        # Create the main User account
         user = User.objects.create_user(**validated_data)
+
+        # Create the Profile once here
+        UserProfile.objects.create(
+            user=user,
+            user_type=user_type,
+            phone_number=phone_number
+        )
         return user
+
+
 class DriverProfileSerializer(serializers.ModelSerializer):
-    # We pull the username from the related User model so the frontend can display it
+    """
+    Serializer for drivers to update their verification documents.
+    """
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
         model = UserProfile
         fields = [
-            'username', 
-            'email', 
-            'phone_number', 
-            'id_number', 
-            'license_number', 
-            'license_image', 
-            'profile_photo', 
-            'is_verified',
-            'is_driver'
+            'username', 'email', 'phone_number', 'id_number', 
+            'license_number', 'license_image', 'profile_photo', 'is_verified'
         ]
-        # These shouldn't be editable by the driver directly for security
         read_only_fields = ['is_verified']
 
     def update(self, instance, validated_data):
-        # This handles the logic if you need to do something specific 
-        # when a driver updates their license (like resetting is_verified to False)
+        # If they update their license, we reset verification to False for re-review
         instance.is_verified = False 
         return super().update(instance, validated_data)
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
-    is_driver = serializers.BooleanField(source='user.is_driver', read_only=True)
 
-    class Meta:
-        model = UserProfile
-        fields = ['username', 'email', 'password', 'phone_number', 'user_type', 'id_number', 'license_number', 'is_driver']
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        user = authenticate(**data)
+        if user and user.is_active:
+            # Get the user_type from the linked profile
+            user_type = getattr(user.profile, 'user_type', 'passenger')
+            return {
+                'token': 'your_token_logic_here', # e.g., str(RefreshToken.for_user(user).access_token)
+                'username': user.username,
+                'user_type': user_type
+            }
+        raise serializers.ValidationError("Invalid username or password.")

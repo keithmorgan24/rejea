@@ -7,29 +7,43 @@ const Login = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
+   const handleChange = (e) => {
+    if (error) setError(''); // Clear the red box when they start re-typing
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleLogin = async (e) => {
+    const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
+      // FIX 1: Change /register/ to /login/ AND payload to formData
       const response = await api.post('/accounts/login/', formData);
+      
       localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user_type', response.data.user_type);
 
-      // Trigger App.jsx to update 'user' and redirect automatically
       if (onLoginSuccess) {
         onLoginSuccess(response.data); 
       }
+
+      if (response.data.user_type === 'driver') {
+        window.location.href = '/driver-dashboard';
+      } else {
+        window.location.href = '/passenger-dashboard';
+      }
+
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid username or password.');
+      // FIX 2: Handle both 'error' and 'non_field_errors' response formats
+      const msg = err.response?.data?.error || 
+                  err.response?.data?.non_field_errors?.[0] || 
+                  'Invalid username or password.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  };
+};
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 p-4">

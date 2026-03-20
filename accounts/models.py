@@ -44,10 +44,8 @@ class UserProfile(models.Model):
 # --- SIGNALS (FIXED VERSION) ---
 
 @receiver(post_save, sender=User)
-def create_or_save_user_profile(sender, instance, created, **kwargs):
-    if created:
-        # Use get_or_create to prevent "duplicate key" if profile already exists
-        UserProfile.objects.get_or_create(user=instance)
-    # Only save if the profile actually exists to avoid errors
+def save_user_profile(sender, instance, created, **kwargs):
+    # Only save if the profile already exists. 
+    # Let the Serializer handle the actual creation.
     if hasattr(instance, 'profile'):
         instance.profile.save()

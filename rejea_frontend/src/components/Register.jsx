@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api'; 
-import { User, Truck, ShieldCheck, Mail, Lock, UserCircle, Phone, ChevronRight } from 'lucide-react';
+import { User, Truck, ShieldCheck, Mail, Lock, UserCircle, Phone } from 'lucide-react';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -17,7 +17,15 @@ const Register = () => {
         license_number: ''
     });
 
+    useEffect(() => {
+        if (error) {
+            const timer = setTimeout(() => setError(''), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [error]);
+
     const handleChange = (e) => {
+        if (error) setError('');
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
@@ -25,14 +33,13 @@ const Register = () => {
         setFormData({ ...formData, user_type: role });
     };
 
-    const handleSubmit = async (e) => {
+        const handleSubmit = async (e) => {
         e.preventDefault();
         if (loading) return;
 
         setLoading(true);
         setError('');
 
-        // Prepare the payload (remove driver fields if user is a passenger)
         const payload = { ...formData };
         if (payload.user_type === 'passenger') {
             delete payload.id_number;
@@ -40,33 +47,32 @@ const Register = () => {
         }
 
         try {
-            // Submit to backend
-            await api.post('/accounts/register/', payload);
-            
-            // Clear session data for a clean login
+           await api.post('/accounts/register/', payload);
             localStorage.clear();
-            
-            // Success: Alert and Redirect
-            alert("Registration successful! Please login with your new credentials.");
+            alert("Registration successful! Please login.");
             navigate('/login', { replace: true });
-
         } catch (err) {
-            console.error("Registration Error Detail:", err.response?.data);
-            
             const serverData = err.response?.data;
-            if (serverData?.username) {
-                setError(`Username Error: ${serverData.username}`);
-            } else if (serverData?.email) {
-                setError(`Email Error: ${serverData.email}`);
-            } else if (serverData?.phone_number) {
-                setError(`Phone Error: ${serverData.phone_number}`);
-            } else {
-                setError("Registration failed. Please check your details or try a different username.");
+            const detailError = serverData?.error || "";
+
+            // 1. Handle the "UserProfile already exists" error (The one in your image)
+            if (detailError.includes("userprofile") && detailError.includes("already exists")) {
+                setError("System Error: A profile already exists for this account. Please try logging in.");
+            } 
+            // 2. Handle Username duplicate
+            else if (detailError.includes("username") && detailError.includes("already exists")) {
+                setError("This username is already taken.");
+            } 
+            // 3. Fallback
+            else {
+                setError("Registration failed. Please check your connection or try again.");
             }
+            console.error("Full Server Error:", serverData);
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
@@ -79,35 +85,20 @@ const Register = () => {
                 </div>
 
                 {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl mb-8 text-xs font-bold text-center">
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl mb-8 text-xs font-bold text-center animate-pulse">
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="flex gap-4 mb-10">
-                        <button
-                            type="button"
-                            onClick={() => handleRoleSelect('passenger')}
-                            className={`flex-1 flex flex-col items-center gap-2 p-5 rounded-3xl border-2 transition-all ${
-                                formData.user_type === 'passenger' 
-                                ? 'border-green-500 bg-green-500/10 text-green-500' 
-                                : 'border-zinc-800 bg-zinc-800/50 text-zinc-500'
-                            }`}
-                        >
+                        <button type="button" onClick={() => handleRoleSelect('passenger')}
+                            className={`flex-1 flex flex-col items-center gap-2 p-5 rounded-3xl border-2 transition-all ${formData.user_type === 'passenger' ? 'border-green-500 bg-green-500/10 text-green-500' : 'border-zinc-800 bg-zinc-800/50 text-zinc-500'}`}>
                             <User size={28} />
                             <span className="font-black text-xs uppercase tracking-widest">Passenger</span>
                         </button>
-
-                        <button
-                            type="button"
-                            onClick={() => handleRoleSelect('driver')}
-                            className={`flex-1 flex flex-col items-center gap-2 p-5 rounded-3xl border-2 transition-all ${
-                                formData.user_type === 'driver' 
-                                ? 'border-green-500 bg-green-500/10 text-green-500' 
-                                : 'border-zinc-800 bg-zinc-800/50 text-zinc-500'
-                            }`}
-                        >
+                        <button type="button" onClick={() => handleRoleSelect('driver')}
+                            className={`flex-1 flex flex-col items-center gap-2 p-5 rounded-3xl border-2 transition-all ${formData.user_type === 'driver' ? 'border-green-500 bg-green-500/10 text-green-500' : 'border-zinc-800 bg-zinc-800/50 text-zinc-500'}`}>
                             <Truck size={28} />
                             <span className="font-black text-xs uppercase tracking-widest">Driver</span>
                         </button>
@@ -115,30 +106,26 @@ const Register = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
-                            <UserCircle className="absolute left-4 top-4 text-zinc-500" size={20} />
-                            <input name="username" type="text" placeholder="Username" required 
-                                value={formData.username} onChange={handleChange}
-                                className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 ring-green-500 outline-none transition-all" />
+                            <UserCircle className={`absolute left-4 top-4 ${error.includes('username') ? 'text-red-500' : 'text-zinc-500'}`} size={20} />
+                            <input name="username" type="text" placeholder="Username" required value={formData.username} onChange={handleChange}
+                                className={`w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 outline-none transition-all ${error.includes('username') ? 'ring-red-500 border-red-500/50' : 'ring-green-500'}`} />
                         </div>
                         <div className="relative">
                             <Phone className="absolute left-4 top-4 text-zinc-500" size={20} />
-                            <input name="phone_number" type="text" placeholder="Phone Number" required 
-                                value={formData.phone_number} onChange={handleChange}
+                            <input name="phone_number" type="text" placeholder="Phone Number" required value={formData.phone_number} onChange={handleChange}
                                 className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 ring-green-500 outline-none transition-all" />
                         </div>
                     </div>
 
                     <div className="relative">
-                        <Mail className="absolute left-4 top-4 text-zinc-500" size={20} />
-                        <input name="email" type="email" placeholder="Email Address" required 
-                            value={formData.email} onChange={handleChange}
-                            className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 ring-green-500 outline-none transition-all" />
+                        <Mail className={`absolute left-4 top-4 ${error.includes('email') ? 'text-red-500' : 'text-zinc-500'}`} size={20} />
+                        <input name="email" type="email" placeholder="Email Address" required value={formData.email} onChange={handleChange}
+                            className={`w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 outline-none transition-all ${error.includes('email') ? 'ring-red-500 border-red-500/50' : 'ring-green-500'}`} />
                     </div>
 
                     <div className="relative">
                         <Lock className="absolute left-4 top-4 text-zinc-500" size={20} />
-                        <input name="password" type="password" placeholder="Password" required 
-                            value={formData.password} onChange={handleChange}
+                        <input name="password" type="password" placeholder="Password" required value={formData.password} onChange={handleChange}
                             className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 ring-green-500 outline-none transition-all" />
                     </div>
 
@@ -146,32 +133,20 @@ const Register = () => {
                         <div className="p-6 bg-zinc-950/50 border border-zinc-800 rounded-3xl space-y-4">
                             <div className="flex items-center gap-2 text-yellow-500 mb-2">
                                 <ShieldCheck size={20} />
-                                <span className="text-xs font-black uppercase tracking-widest">Driver Verification Required</span>
+                                <span className="text-xs font-black uppercase tracking-widest">Driver Verification</span>
                             </div>
-                            <input name="id_number" type="text" placeholder="National ID Number" required 
-                                value={formData.id_number} onChange={handleChange}
-                                className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 px-5 text-white focus:ring-2 ring-green-500 outline-none transition-all" />
-                            <input name="license_number" type="text" placeholder="Driving License Number" required 
-                                value={formData.license_number} onChange={handleChange}
-                                className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 px-5 text-white focus:ring-2 ring-green-500 outline-none transition-all" />
+                            <input name="id_number" type="text" placeholder="National ID Number" required value={formData.id_number} onChange={handleChange}
+                                className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 px-5 text-white focus:ring-2 ring-green-500 outline-none" />
+                            <input name="license_number" type="text" placeholder="License Number" required value={formData.license_number} onChange={handleChange}
+                                className="w-full bg-zinc-800 border-zinc-700 rounded-2xl py-4 px-5 text-white focus:ring-2 ring-green-500 outline-none" />
                         </div>
                     )}
 
                     <button type="submit" disabled={loading}
-                        className="w-full bg-white hover:bg-green-500 text-black hover:text-white font-black text-lg py-5 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-2xl mt-4">
-                        {loading ? 'CREATING PROFILE...' : 'COMPLETE REGISTRATION'}
-                        {!loading && <ChevronRight size={20} />}
+                        className="w-full bg-green-500 hover:bg-green-400 disabled:bg-zinc-800 text-black font-black py-4 rounded-2xl transition-all uppercase">
+                        {loading ? 'Processing...' : 'Complete Registration'}
                     </button>
                 </form>
-
-                <div className="mt-10 pt-8 border-t border-zinc-800 text-center">
-                    <p className="text-zinc-500 font-medium">
-                        Already have an account?{' '}
-                        <Link to="/login" className="text-green-500 hover:text-white font-bold ml-1 transition-colors">
-                            Sign In
-                        </Link>
-                    </p>
-                </div>
             </div>
         </div>
     );

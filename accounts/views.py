@@ -1,3 +1,4 @@
+from .serializers import RegisterSerializer
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,28 +15,18 @@ class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        data = request.data
-        try:
-            user = User.objects.create_user(
-                username=data['username'],
-                password=data['password'],
-                email=data.get('email', '')
-            )
-            # Re-enabled: Ensure profile is created so frontend gets user_type
-            UserProfile.objects.create(
-                user=user,
-                user_type=data.get('user_type', 'passenger'),
-                is_verified=False 
-            )
-            
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
             return Response({
                 "message": "User created successfully",
-                "token": token.key
+                "token": token.key,
+                "user_type": getattr(user.profile, 'user_type', 'passenger')
             }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        # This will return the "already exists" errors we handled in React
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # 2. Login View
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -45,17 +36,22 @@ class LoginView(APIView):
         password = request.data.get('password')
         user = authenticate(username=username, password=password)
         
-        if user:
-            token, _ = Token.objects.get_or_create(user=user)
-            # Safe fetch: Ensure profile exists before returning data
-            profile, _ = UserProfile.objects.get_or_create(user=user)
-            return Response({
-                "token": token.key,
-                "user_type": profile.user_type,
-                "username": user.username,
-                "is_verified": profile.is_verified
-            }, status=status.HTTP_200_OK)
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        if not user:
+            # FIX: Ensure this return is INSIDE the if block
+            exists = User.objects.filter(username=username).exists()
+            print(f"DEBUG: User {username} exists? {exists}")
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # If we reach here, user is authenticated
+        token, _ = Token.objects.get_or_create(user=user)
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        
+        return Response({
+            "token": token.key,
+            "user_type": profile.user_type,
+            "username": user.username,
+            "is_verified": profile.is_verified
+        }, status=status.HTTP_200_OK)
 
 # 3. User Profile View: Fixed 'userprofile' Attribute Error
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -91,7 +87,7 @@ class DriverSetupView(APIView):
 class ToggleAvailabilityView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
+    def patch(self, request):
         vehicle = get_object_or_404(Vehicle, driver=request.user)
         vehicle.is_active = not vehicle.is_active
         vehicle.save()
