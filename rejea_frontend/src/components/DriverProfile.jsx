@@ -1,8 +1,8 @@
 import React from 'react';
-import { User, ShieldCheck, Truck, Phone, Hash, Calendar, Award } from 'lucide-react';
+import { User, ShieldCheck, Truck, Phone, Hash, Calendar, Award, LogOut } from 'lucide-react';
 
-const DriverProfile = ({ user }) => {
-  // Stats could eventually come from a backend 'Earnings' endpoint
+// Destructure onLogout from props
+const DriverProfile = ({ user, onLogout }) => {
   const stats = [
     { label: 'Total Trips', value: '124', icon: <Truck size={20}/> },
     { label: 'Rating', value: '4.9', icon: <Award size={20}/> },
@@ -10,7 +10,7 @@ const DriverProfile = ({ user }) => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Driver Identity Card */}
       <section className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-6">
@@ -24,8 +24,10 @@ const DriverProfile = ({ user }) => {
             <User size={40} className="text-zinc-500" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">{user.username}</h2>
-            <p className="text-zinc-500 font-mono text-sm">{user.email}</p>
+            <h2 className="text-2xl font-bold text-white uppercase italic tracking-tighter">
+              {user?.username}
+            </h2>
+            <p className="text-zinc-500 font-mono text-sm">{user?.email}</p>
           </div>
         </div>
 
@@ -41,7 +43,7 @@ const DriverProfile = ({ user }) => {
         </div>
       </section>
 
-      {/* Official Credentials Section */}
+      {/* Official Credentials & Logout Section */}
       <section className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
         <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 px-2">Compliance Details</h3>
         
@@ -51,7 +53,7 @@ const DriverProfile = ({ user }) => {
               <Hash size={18} />
               <span className="text-sm">National ID</span>
             </div>
-            <span className="font-mono text-white">{user.id_number || "Verified"}</span>
+            <span className="font-mono text-white">{user?.id_number || "Verified"}</span>
           </div>
 
           <div className="flex items-center justify-between p-4 bg-zinc-950/30 rounded-2xl border border-zinc-800/50">
@@ -59,7 +61,7 @@ const DriverProfile = ({ user }) => {
               <ShieldCheck size={18} />
               <span className="text-sm">DL Number</span>
             </div>
-            <span className="font-mono text-white">{user.license_number || "Verified"}</span>
+            <span className="font-mono text-white">{user?.license_number || "Verified"}</span>
           </div>
 
           <div className="flex items-center justify-between p-4 bg-zinc-950/30 rounded-2xl border border-zinc-800/50">
@@ -67,8 +69,19 @@ const DriverProfile = ({ user }) => {
               <Phone size={18} />
               <span className="text-sm">Contact Number</span>
             </div>
-            <span className="font-mono text-white">{user.phone_number}</span>
+            <span className="font-mono text-white">{user?.phone_number}</span>
           </div>
+        </div>
+
+        {/* LOGOUT ACTION */}
+        <div className="mt-8 pt-6 border-t border-zinc-800/50">
+          <button 
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-3 py-5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl font-black transition-all active:scale-95 border border-red-500/20 shadow-lg shadow-red-500/5"
+          >
+            <LogOut size={20} />
+            SIGN OUT OF REJEA
+          </button>
         </div>
       </section>
     </div>

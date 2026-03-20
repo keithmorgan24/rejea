@@ -1,56 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import api from './api';
+import api from './api'; // Ensure api.js is in the same folder as App.jsx
 
-// Authentication & Onboarding
+// Component Imports
 import Login from './components/Login';
 import Register from './components/Register';
 import VerificationPendingView from './components/VerificationPendingView';
-
-// Dashboards
 import DriverDash from './components/DriverDash';
 import PassengerDash from './components/PassengerDash';
-
-// Profile & History
 import DriverProfile from './components/DriverProfile';
 import PassengerHistory from './components/PassengerHistory';
-import SeatGrid from './components/SeatGrid';
-
-// Navigation
 import Navbar from './components/Navbar';
 
 const App = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Session Persistence: Check if user is logged in on refresh
-  const checkAuth = async () => {
+  // Check if user is already logged in on page load
+  const checkAuth = useCallback(async () => {
     const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const res = await api.get('/accounts/profile/');
-        setUser(res.data);
-      } catch (err) {
-        console.error("Session expired or invalid");
-        localStorage.removeItem('token');
-        setUser(null);
-      }
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
     }
-    setLoading(false);
-  };
+    try {
+      const res = await api.get('/accounts/profile/');
+      setUser(res.data);
+    } catch (err) {
+      console.error("Session expired");
+      localStorage.removeItem('token');
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
-  // 2. Helper to update user state immediately after Login.jsx succeeds
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
+  // Global Logout Function
+  const handleLogout = () => {
+    localStorage.clear();
+    setUser(null);
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-green-500"></div>
+    <div className="h-screen bg-zinc-950 flex items-center justify-center text-green-500 font-black italic">
+      LOADING REJEA...
     </div>
   );
 
@@ -58,66 +56,36 @@ const App = () => {
     <Router>
       <div className={`min-h-screen bg-zinc-950 text-zinc-100 ${user ? 'pb-24' : ''}`}>
         <Routes>
-          {/* --- PUBLIC ROUTES --- */}
-          {/* We pass handleLoginSuccess here so Login.jsx can update the 'user' state */}
-          <Route 
-            path="/login" 
-            element={!user ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} 
-          />
-          <Route 
-            path="/register" 
-            element={!user ? <Register /> : <Navigate to="/" />} 
-          />
+          {/* 1. PUBLIC ROUTES: If logged in, redirect to home (/) */}
+          <Route path="/login" element={!user ? <Login onLoginSuccess={setUser} /> : <Navigate to="/" replace />} />
+          <Route path="/register" element={!user ? <Register /> : <Navigate to="/" replace />} />
 
-          {/* --- CENTRAL TRAFFIC CONTROLLER --- */}
+          {/* 2. THE TRAFFIC CONTROLLER (Path: "/")
+                 Renders the correct dashboard DIRECTLY to prevent redirect loops */}
           <Route path="/" element={
-            user ? (
+            !user ? <Navigate to="/login" replace /> : (
               user.user_type === 'driver' ? (
-                user.is_verified ? <Navigate to="/driver-dashboard" /> : <Navigate to="/pending" />
+                user.is_verified ? <DriverDash user={user} /> : <VerificationPendingView setUser={setUser} />
               ) : (
-                <Navigate to="/passenger-dashboard" />
+                <PassengerDash user={user} />
               )
-            ) : (
-              <Navigate to="/login" />
             )
           } />
 
-          {/* --- DRIVER ROUTES --- */}
-          <Route path="/driver-dashboard" element={
-            user?.user_type === 'driver' && user.is_verified 
-            ? <DriverDash user={user} /> 
-            : <Navigate to="/" />
-          } />
-
-          <Route path="/pending" element={
-            user?.user_type === 'driver' && !user.is_verified 
-            ? <VerificationPendingView setUser={setUser} /> 
-            : <Navigate to="/" />
-          } />
-
-          {/* --- PASSENGER ROUTES --- */}
-          <Route path="/passenger-dashboard" element={
-            user?.user_type === 'passenger' ? <PassengerDash user={user} /> : <Navigate to="/" />
-          } />
-
-          <Route path="/trips/:tripId/seats" element={
-            user ? <SeatGrid /> : <Navigate to="/login" />
-          } />
-
-          <Route path="/history" element={
-            user?.user_type === 'passenger' ? <PassengerHistory /> : <Navigate to="/" />
-          } />
-
-          {/* --- SHARED PROFILE ROUTE --- */}
+          {/* 3. PROTECTED ROUTES */}
           <Route path="/profile" element={
-            user ? <DriverProfile user={user} /> : <Navigate to="/login" />
+            user ? <DriverProfile user={user} onLogout={handleLogout} /> : <Navigate to="/login" replace />
+          } />
+          
+          <Route path="/history" element={
+            user ? <PassengerHistory /> : <Navigate to="/login" replace />
           } />
 
-          {/* Catch-all for 404s */}
-          <Route path="*" element={<Navigate to="/" />} />
+          {/* 4. CATCH-ALL */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
-        {/* Persistent Bottom Navbar */}
+        {/* Show Navbar only if user is logged in */}
         {user && <Navbar userType={user.user_type} />}
       </div>
     </Router>

@@ -49,7 +49,8 @@ class DriverProfileSerializer(serializers.ModelSerializer):
             'license_number', 
             'license_image', 
             'profile_photo', 
-            'is_verified'
+            'is_verified',
+            'is_driver'
         ]
         # These shouldn't be editable by the driver directly for security
         read_only_fields = ['is_verified']
@@ -59,3 +60,12 @@ class DriverProfileSerializer(serializers.ModelSerializer):
         # when a driver updates their license (like resetting is_verified to False)
         instance.is_verified = False 
         return super().update(instance, validated_data)
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    is_driver = serializers.BooleanField(source='user.is_driver', read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['username', 'email', 'password', 'phone_number', 'user_type', 'id_number', 'license_number', 'is_driver']
