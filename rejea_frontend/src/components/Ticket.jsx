@@ -15,7 +15,7 @@ const Ticket = () => {
       seat: "A4",
       date: new Date().toLocaleDateString(),
       time: "14:30 PM",
-      amount: "800"
+      amount: "2"
     } 
   };
 

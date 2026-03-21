@@ -46,7 +46,7 @@ class STKPushView(APIView):
 
         # 2. Setup Data
         phone = request.data.get('phone')
-        amount = request.data.get('amount', 1)
+        amount = request.data.get('amount', 2)
         seat_id = request.data.get('seat_id')
         
         business_short_code = "174379"

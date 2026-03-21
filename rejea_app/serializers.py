@@ -43,7 +43,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'password', 'email', 'user_type', 'phone_number']
+        fields = ['username', 'password', 'email', 'user_type', 'phone_number', 'number_of_seats']
 
     def create(self, validated_data):
         user_type = validated_data.pop('user_type', 'passenger')
