@@ -47,7 +47,7 @@ const DriverMap = ({ onMapLoad }) => {
     }, [position, onMapLoad]);
 
     return (
-        <div className="w-full h-[450px] rounded-[2rem] overflow-hidden border border-zinc-800 shadow-2xl relative bg-zinc-900">
+        <div className="w-full h-112.5 rounded-4xl overflow-hidden border border-zinc-800 shadow-2xl relative bg-zinc-900">
             {!position ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-10">
                     <div className="text-center">

@@ -26,19 +26,33 @@ const SeatGrid = () => {
   };
 
   const handleLockSeat = async () => {
-    if (!selectedSeat) return;
-    
-    try {
-      // Hits your 'api/trips/lock-seat/' endpoint
-      await api.post('/trips/lock-seat/', { seat_id: selectedSeat.id });
-      // On success, move to payment
-      navigate(`/payment/${selectedSeat.id}`);
-    } catch (err) {
-      alert(err.response?.data?.error || "Could not lock seat");
-      fetchSeats(); // Refresh to see updated availability
-    }
-  };
+  if (!selectedSeat) {
+    alert("Please select a seat first!");
+    return;
+  }
 
+  try {
+    // 1. Lock the seat in your local DB first
+    await api.post('/trips/lock-seat/', { seat_id: selectedSeat.id });
+
+    // 2. Trigger M-Pesa STK Push
+    const res = await api.post('/payments/stk-push/', {
+      phone: "254757869898", // Ensure this is a valid Safaricom number
+      amount: 1,
+      seat_id: selectedSeat.id
+    });
+    
+    // Safaricom returns "0" for success
+    if (res.data.ResponseCode === "0") {
+      alert("Success! Enter your M-Pesa PIN on your phone.");
+    } else {
+      alert("M-Pesa error: " + (res.data.CustomerMessage || "Initialization failed"));
+    }
+  } catch (err) {
+    console.error("Booking failed:", err);
+    alert("Could not initialize payment. Please try again.");
+  }
+};
   return (
     <div className="min-h-screen bg-zinc-50 p-6">
       <div className="max-w-4xl mx-auto">

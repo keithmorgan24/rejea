@@ -1,40 +1,62 @@
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
-from rest_framework.response import Response
-import base64
-from datetime import datetime
-import requests
+# payments/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.conf import settings
-import json
-from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from trips.models import Seat
-from .utils import get_access_token 
-from .models import RegisterView
+from django.http import JsonResponse
+import base64
+import requests
+from requests.auth import HTTPBasicAuth
+from datetime import datetime
+import json
+from rejea_app.models import Seat
+from rest_framework.authentication import TokenAuthentication
+
+
+def get_mpesa_access_token():
+    # FIXED: The URL must include the query parameter exactly like this
+    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    
+    try:
+        res = requests.get(
+            url, 
+            auth=HTTPBasicAuth(settings.MPESA_CONSUMER_KEY, settings.MPESA_CONSUMER_SECRET),
+            timeout=10
+        )
+        if res.status_code == 200:
+            return res.json().get('access_token')
+        
+        # This will print the REAL reason for the 404/401 in your terminal
+        print(f"M-PESA AUTH ERROR {res.status_code}: {res.text}")
+        return None
+    except Exception as e:
+        print(f"M-PESA CONNECTION ERROR: {e}")
+        return None
 
 class STKPushView(APIView):
+    authentication_classes = [TokenAuthentication] # Explicitly add this
+    permission_classes = [IsAuthenticated]
     def post(self, request):
-        # 1. Get data from the React Modal
-        phone = request.data.get('phone') # e.g., 254712345678
-        amount = request.data.get('amount')
+        # 1. Get Token first
+        token = get_mpesa_access_token()
+        if not token:
+            # Prevent the 500 crash by returning a clean error to React
+            return Response({"error": "Safaricom Auth Failed. Check your Consumer Key/Secret."}, status=401)
+
+        # 2. Setup Data
+        phone = request.data.get('phone')
+        amount = request.data.get('amount', 1)
+        seat_id = request.data.get('seat_id')
         
-        # 2. Setup Daraja Credentials (Use your .env variables)
-        business_short_code = "174379" # Default Sandbox Shortcode
+        business_short_code = "174379"
         passkey = settings.MPESA_PASSKEY
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        
-        # Generate the Password
-        # 
-        data_to_encode = business_short_code + passkey + timestamp
-        password = base64.b64encode(data_to_encode.encode()).decode('utf-8')
-        
-        # 3. The Daraja Endpoint & Headers
+        password = base64.b64encode((business_short_code + passkey + timestamp).encode()).decode('utf-8')
+
+        # 3. Call STK Push (FIXED URL)
         api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-        headers = {"Authorization": f"Bearer {settings.MPESA_ACCESS_TOKEN}"}
-        
-        # 4. The Payload (What Safaricom expects)
+        headers = {"Authorization": f"Bearer {token}"}
         payload = {
             "BusinessShortCode": business_short_code,
             "Password": password,
@@ -44,56 +66,19 @@ class STKPushView(APIView):
             "PartyA": phone,
             "PartyB": business_short_code,
             "PhoneNumber": phone,
-            "CallBackURL": "https://a1b2-c3d4.ngrok-free.app/api/payments/callback/"
-, 
-            "AccountReference": "RejeaProject",
-            "TransactionDesc": "Seat Payment"
+            "CallBackURL": "https://unsinewed-dumpily-muriel.ngrok-free.dev", 
+            "AccountReference": f"Seat_{seat_id}",
+            "TransactionDesc": f"Seat Booking"
         }
+
         response = requests.post(api_url, json=payload, headers=headers)
         return Response(response.json())
-@csrf_exempt # Safaricom doesn't have a CSRF token, so we exempt this
-def mpesa_callback(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        
-        # Check if the payment was successful
-        result_code = data['Body']['stkCallback']['ResultCode']
-        
-        if result_code == 0:
-            # Payment Successful!
-            # Extract metadata (like the phone number or custom ID you sent)
-            metadata = data['Body']['stkCallback']['CallbackMetadata']['Item']
-            # Find the transaction amount or receipt number if needed
-            
-            # Logic: Update the seat status
-            # For this to work, you'll pass a 'BillRef' in the STK push
-            # Let's assume you find the seat by the User's phone number for now:
-            seat = Seat.objects.filter(locked_by__phone_number=..., is_booked=False).first()
-            if seat:
-                seat.is_booked = True
-                seat.locked_at = None # Clear the lock timer
-                seat.save()
-                
-        return JsonResponse({"ResultCode": 0, "ResultDesc": "Success"})
-class RegisterView(APIView):
+
+
+class MpesaCallbackView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
-        # This is where you'd handle user registration
-        # For simplicity, let's just return a success message
-        return Response({"message": "User registered successfully!"})
-class CustomLoginView(ObtainAuthToken):
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data,
-                                           context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        token, created = Token.objects.get_or_create(user=user)
-        
-        # Get the user type from the profile
-        user_type = getattr(user.profile, 'user_type', 'passenger')
-        
-        return Response({
-            'token': token.key,
-            'user_id': user.pk,
-            'username': user.username,
-            'user_type': user_type
-        })
+        data = request.data # DRF handles JSON parsing automatically
+        # Add your business logic here to mark seat as booked
+        return Response({"ResultCode": 0, "ResultDesc": "Success"})

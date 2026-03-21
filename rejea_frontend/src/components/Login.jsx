@@ -7,35 +7,34 @@ const Login = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-   const handleChange = (e) => {
-    if (error) setError(''); // Clear the red box when they start re-typing
+  // ADD THIS BACK IN:
+  const handleChange = (e) => {
+    if (error) setError(''); // Clear error message when user starts typing again
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-    const handleLogin = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // FIX 1: Change /register/ to /login/ AND payload to formData
-      const response = await api.post('/accounts/login/', formData);
+      const { username, password } = formData;
+      const res = await api.post('/accounts/login/', { username, password });
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user_type', response.data.user_type);
+      localStorage.setItem('token', res.data.token);
 
       if (onLoginSuccess) {
-        onLoginSuccess(response.data); 
+        onLoginSuccess(res.data);
       }
 
-      if (response.data.user_type === 'driver') {
+      if (res.data.user_type === 'driver') {
         window.location.href = '/driver-dashboard';
       } else {
         window.location.href = '/passenger-dashboard';
       }
 
     } catch (err) {
-      // FIX 2: Handle both 'error' and 'non_field_errors' response formats
       const msg = err.response?.data?.error || 
                   err.response?.data?.non_field_errors?.[0] || 
                   'Invalid username or password.';
@@ -43,7 +42,7 @@ const Login = ({ onLoginSuccess }) => {
     } finally {
       setLoading(false);
     }
-};
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 p-4">

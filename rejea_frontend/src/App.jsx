@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import api from './api'; // Ensure api.js is in the same folder as App.jsx
+import api from './api';
 
 // Component Imports
 import Login from './components/Login';
@@ -11,10 +11,17 @@ import PassengerDash from './components/PassengerDash';
 import DriverProfile from './components/DriverProfile';
 import PassengerHistory from './components/PassengerHistory';
 import Navbar from './components/Navbar';
+import SeatGrid from './components/SeatGrid';
 
 const App = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+
+  // Helper to update user state from child components (like DriverDash)
+  const updateUserData = (newData) => {
+    setUser(prev => ({ ...prev, ...newData }));
+  };
 
   // Check if user is already logged in on page load
   const checkAuth = useCallback(async () => {
@@ -40,7 +47,6 @@ const App = () => {
     checkAuth();
   }, [checkAuth]);
 
-  // Global Logout Function
   const handleLogout = () => {
     localStorage.clear();
     setUser(null);
@@ -56,24 +62,28 @@ const App = () => {
     <Router>
       <div className={`min-h-screen bg-zinc-950 text-zinc-100 ${user ? 'pb-24' : ''}`}>
         <Routes>
-          {/* 1. PUBLIC ROUTES: If logged in, redirect to home (/) */}
+            <Route path="/seat-selection/:tripId" element={
+            user ? <SeatGrid /> : <Navigate to="/login" replace />
+          } />
+          {/* Public Routes */}
           <Route path="/login" element={!user ? <Login onLoginSuccess={setUser} /> : <Navigate to="/" replace />} />
           <Route path="/register" element={!user ? <Register /> : <Navigate to="/" replace />} />
 
-          {/* 2. THE TRAFFIC CONTROLLER (Path: "/")
-                 Renders the correct dashboard DIRECTLY to prevent redirect loops */}
+          {/* Main Dashboard Traffic Controller */}
           <Route path="/" element={
             !user ? <Navigate to="/login" replace /> : (
               user.user_type === 'driver' ? (
-                user.is_verified ? <DriverDash user={user} /> : <VerificationPendingView setUser={setUser} />
+                user.is_verified ? 
+                  <DriverDash user={user} onUpdateUser={updateUserData} /> : 
+                  <VerificationPendingView setUser={setUser} />
               ) : (
                 <PassengerDash user={user} />
               )
             )
           } />
 
-          {/* 3. PROTECTED ROUTES */}
-          <Route path="/profile" element={
+          {/* Protected Routes */}
+         <Route path="/profile" element={
             user ? <DriverProfile user={user} onLogout={handleLogout} /> : <Navigate to="/login" replace />
           } />
           
@@ -81,11 +91,11 @@ const App = () => {
             user ? <PassengerHistory /> : <Navigate to="/login" replace />
           } />
 
-          {/* 4. CATCH-ALL */}
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
-        {/* Show Navbar only if user is logged in */}
+        {/* Global Navigation */}
         {user && <Navbar userType={user.user_type} />}
       </div>
     </Router>

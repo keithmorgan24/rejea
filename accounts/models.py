@@ -3,6 +3,12 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+class Vehicle(models.Model):
+    # ... keep your existing fields
+    capacity = models.IntegerField(default=14)
+    current_lat = models.FloatField(null=True, blank=True)
+    current_lng = models.FloatField(null=True, blank=True)
+
 class User(AbstractUser):
     """
     Custom User model for Rejea.
@@ -41,11 +47,14 @@ class UserProfile(models.Model):
         status = "VERIFIED" if self.is_verified else "PENDING"
         return f"{self.user.username} | {self.user_type.upper()} | {status}"
 
-# --- SIGNALS (FIXED VERSION) ---
+
 
 @receiver(post_save, sender=User)
-def save_user_profile(sender, instance, created, **kwargs):
-    # Only save if the profile already exists. 
-    # Let the Serializer handle the actual creation.
-    if hasattr(instance, 'profile'):
-        instance.profile.save()
+def manage_user_profile(sender, instance, created, **kwargs):
+    if created:
+        # Create the profile automatically
+        UserProfile.objects.create(user=instance)
+    else:
+        # Save existing profile updates
+        if hasattr(instance, 'profile'):
+            instance.profile.save()

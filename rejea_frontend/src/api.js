@@ -1,18 +1,14 @@
+// src/api.js
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/', // Update this if your backend URL changes
-  headers: {
-    'Content-Type': 'application/json',
-  }
+  // Use localhost instead of 127.0.0.1 to avoid Windows IPv6 conflicts
+  baseURL: 'http://localhost:8000/api', 
 });
-
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
-    // Note: Use 'Token' if using Django's standard TokenAuthentication
-    // Use 'Bearer' if you switched to JWT
     config.headers.Authorization = `Token ${token}`;
   }
   return config;

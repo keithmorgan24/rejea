@@ -3,25 +3,42 @@ import DriverMap from '../components/DriverMap';
 import api from '../api';
 import { User, Power, Loader2 } from 'lucide-react';
 
-const DriverDash = () => {
+const DriverDash = ({ user, onUpdateUser }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false); // To show loading on the button
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [vehicleData, setVehicleData] = useState({
+    model: '',
+    plate_number: '',
+    color: '',
+  });
+  
   const watchId = useRef(null);
 
-  // Cleanup GPS on unmount
-  useEffect(() => {
-    return () => stopTracking();
-  }, []);
+  // 1. Vehicle Registration Logic
+  const handleRegisterVehicle = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      // Sends model, plate_number, and color to your backend
+      const res = await api.post('/accounts/register-vehicle/', vehicleData);
+      onUpdateUser({ vehicle: res.data });
+      alert("Vehicle registered successfully!");
+    } catch (err) {
+      console.error("Registration failed", err);
+      alert("Registration failed. Please check your details and try again.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
+  // 2. GPS Tracking Logic
   const startTracking = () => {
     if ("geolocation" in navigator) {
       watchId.current = navigator.geolocation.watchPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
-            await api.post('/update-location/', {  latitude: latitude,
-  longitude: longitude });
+            await api.post('/update-location/', { latitude, longitude });
           } catch (err) {
             console.error("Location sync failed", err);
           }
@@ -29,7 +46,6 @@ const DriverDash = () => {
         (error) => {
           console.error("GPS Error:", error);
           stopTracking();
-          setIsLive(false);
         },
         { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
       );
@@ -43,88 +59,124 @@ const DriverDash = () => {
     }
   };
 
+  // 3. Toggle Online/Offline Status
   const toggleStatus = async () => {
     setIsUpdating(true);
-    const newStatus = !isLive;
     try {
-      // PATH MUST MATCH: path('rejea/vehicle/toggle-status/', ...) in urls.py
-       await api.patch('/accounts/toggle-status/', { is_active: newStatus });
+      const res = await api.post('/accounts/toggle-availability/');
+      const newStatus = res.data.is_available;
       
-      setIsLive(newStatus);
+      onUpdateUser({ is_available: newStatus });
+
       if (newStatus) {
         startTracking();
       } else {
         stopTracking();
       }
-    } catch (error) {
-      console.error("Failed to update status", error);
-      alert("Connection error. Ensure your backend matches the URL path.");
+    } catch (err) {
+      console.error("Status update failed", err);
     } finally {
       setIsUpdating(false);
     }
-  }; // <--- Fixed missing brace here
+  };
 
+  // GPS Cleanup on unmount or status change
+  useEffect(() => {
+    if (user.is_available) {
+      startTracking();
+    }
+    return () => stopTracking();
+  }, [user.is_available]);
+
+  // VIEW 1: Registration Form (If no vehicle is linked to user)
+  if (!user.vehicle) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white p-6 flex flex-col justify-center">
+        <section className="max-w-md mx-auto bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl w-full">
+          <h2 className="text-2xl font-black mb-6 uppercase tracking-tight text-green-500">Register Vehicle</h2>
+          <form onSubmit={handleRegisterVehicle} className="space-y-4">
+            <input 
+              className="w-full p-4 bg-zinc-800 rounded-xl border border-zinc-700 focus:border-green-500 outline-none transition-all"
+              placeholder="Model (e.g. Toyota Vitz)"
+              value={vehicleData.model}
+              onChange={(e) => setVehicleData({...vehicleData, model: e.target.value})}
+              required
+            />
+            <input 
+              className="w-full p-4 bg-zinc-800 rounded-xl border border-zinc-700 focus:border-green-500 outline-none transition-all"
+              placeholder="Plate Number"
+              value={vehicleData.plate_number}
+              onChange={(e) => setVehicleData({...vehicleData, plate_number: e.target.value})}
+              required
+            />
+            <input 
+              className="w-full p-4 bg-zinc-800 rounded-xl border border-zinc-700 focus:border-green-500 outline-none transition-all"
+              placeholder="Vehicle Color (e.g. White)"
+              value={vehicleData.color}
+              onChange={(e) => setVehicleData({...vehicleData, color: e.target.value})}
+              required
+            />
+            <button 
+              type="submit"
+              disabled={isUpdating}
+              className="w-full bg-green-600 hover:bg-green-500 py-4 rounded-xl font-black text-lg transition-all flex justify-center items-center"
+            >
+              {isUpdating ? <Loader2 className="animate-spin" /> : "COMPLETE REGISTRATION"}
+            </button>
+          </form>
+        </section>
+      </div>
+    );
+  }
+
+  // VIEW 2: Dashboard (If vehicle exists)
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6 font-sans">
-      
-      {/* Header with Map Status Badge */}
       <div className="flex items-center gap-4 mb-6">
         <h1 className="text-2xl font-black uppercase tracking-tight">Driver Console</h1>
-        
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-bold transition-all duration-500 ${
-          isMapLoaded ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-red-500/10 border-red-500 text-red-500'
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-bold transition-all ${
+          user.is_available ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-red-500/10 border-red-500 text-red-500'
         }`}>
-          <span className={`h-2 w-2 rounded-full ${isMapLoaded ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-          {isMapLoaded ? "SYSTEM ACTIVE" : "AWAITING GPS"}
+          <span className={`h-2 w-2 rounded-full ${user.is_available ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+          {user.is_available ? "LIVE" : "OFFLINE"}
         </div>
       </div>
-      
-      {/* Map Section */}
-      <div className="mb-10 rounded-3xl overflow-hidden border border-zinc-800 shadow-2xl relative bg-zinc-900 h-100">
+
+      <div className="rounded-3xl overflow-hidden border border-zinc-800 shadow-2xl relative bg-zinc-900 h-80 mb-6">
         <DriverMap onMapLoad={() => setIsMapLoaded(true)} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Profile Section */}
-        <section className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
-          <div className="flex items-center gap-4">
-            <div className="bg-green-500/10 p-4 rounded-full">
-              <User className="text-green-500" size={32} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">Driver Profile</h2>
-              <p className="text-zinc-400 text-sm font-mono">Verified Operator</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Status Toggle Card */}
-        <section className={`p-6 rounded-3xl border-2 transition-all duration-500 ${
-          isLive ? 'border-green-500 bg-green-500/5' : 'border-zinc-800 bg-zinc-900'
+      <div className="grid grid-cols-1 gap-6">
+        <section className={`p-8 rounded-3xl border-2 transition-all duration-500 flex flex-col items-center text-center ${
+          user.is_available ? 'border-green-500 bg-green-500/5' : 'border-zinc-800 bg-zinc-900'
         }`}>
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-bold">
-                {isLive ? "LIVE & BROADCASTING" : "GO ONLINE"}
-              </h3>
-              <p className="text-zinc-400 text-sm">
-                {isLive ? "Passengers see your location" : "You are hidden from the map"}
-              </p>
-            </div>
-            <button 
-              onClick={toggleStatus}
-              disabled={isUpdating}
-              className={`p-4 rounded-full transition-all active:scale-90 disabled:opacity-50 ${
-                isLive ? 'bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'bg-zinc-700 hover:bg-zinc-600'
-              }`}
-            >
-              {isUpdating ? (
-                <Loader2 className="animate-spin text-white" size={28} />
-              ) : (
-                <Power size={28} className={isLive ? "text-black" : "text-white"} />
-              )}
-            </button>
+          <div className={`w-20 h-20 rounded-full mb-4 flex items-center justify-center border-4 transition-all ${
+            user.is_available ? 'border-green-500 scale-110' : 'border-zinc-700'
+          }`}>
+            <span className="text-3xl">🚗</span>
           </div>
+          
+          <h2 className="text-xl font-bold">{user.vehicle.model}</h2>
+          <p className="text-zinc-500 font-mono text-sm mb-6">
+            {user.vehicle.color} • {user.vehicle.plate_number}
+          </p>
+
+          <button 
+            onClick={toggleStatus}
+            disabled={isUpdating}
+            className={`w-full py-5 rounded-2xl font-black text-xl transition-all active:scale-95 flex justify-center items-center gap-3 ${
+              user.is_available ? 'bg-red-600' : 'bg-green-600 shadow-[0_0_30px_rgba(34,197,94,0.3)]'
+            }`}
+          >
+            {isUpdating ? (
+              <Loader2 className="animate-spin" size={24} />
+            ) : (
+              <>
+                <Power size={24} />
+                {user.is_available ? "GO OFFLINE" : "GO ONLINE"}
+              </>
+            )}
+          </button>
         </section>
       </div>
     </div>

@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'payments',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_daraja',
 ]
 
 REST_FRAMEWORK = {
@@ -160,3 +161,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+MPESA_CONSUMER_KEY = "yrJeFe4PUMyGLkcpZBKrTZaMjyAEjRkqm5hrnODIauBNtA1p"
+MPESA_CONSUMER_SECRET = "VuwwGHQTSRXqKD2xCW08gXKRW6fbNKvheRALQC2hqHJ5VQd9iX3KRNKiQYLXf0zR"
+MPESA_PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+MPESA_BUSINESS_SHORTCODE = "174379"

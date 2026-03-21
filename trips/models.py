@@ -8,6 +8,9 @@ class Trip(models.Model):
         on_delete=models.CASCADE, 
         related_name='trips_as_driver'
     )
+
+
+    
     # ... other fields ...
 
 class Seat(models.Model):
