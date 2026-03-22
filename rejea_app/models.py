@@ -23,6 +23,7 @@ class Vehicle(models.Model):
         related_name='vehicles')
     plate_number = models.CharField(max_length=20)
     model = models.CharField(max_length=50)
+    total_seats = models.IntegerField(default=14) # Assuming max 99 seats for simplicity
     color = models.CharField(max_length=30)
     is_active = models.BooleanField(default=False) # Sync with driver's availability
 class Transaction(models.Model):
@@ -53,3 +54,4 @@ class Seat(models.Model):
     is_booked = models.BooleanField(default=False)
     is_locked = models.BooleanField(default=False) 
     locked_at = models.DateTimeField(null=True, blank=True)
+    

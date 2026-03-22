@@ -52,25 +52,25 @@ const Register = () => {
             alert("Registration successful! Please login.");
             navigate('/login', { replace: true });
         } catch (err) {
-            const serverData = err.response?.data;
-            const detailError = serverData?.error || "";
-
-            // 1. Handle the "UserProfile already exists" error (The one in your image)
-            if (detailError.includes("userprofile") && detailError.includes("already exists")) {
-                setError("System Error: A profile already exists for this account. Please try logging in.");
-            } 
-            // 2. Handle Username duplicate
-            else if (detailError.includes("username") && detailError.includes("already exists")) {
-                setError("This username is already taken.");
-            } 
-            // 3. Fallback
-            else {
-                setError("Registration failed. Please check your connection or try again.");
-            }
-            console.error("Full Server Error:", serverData);
-        } finally {
-            setLoading(false);
+    const serverErrors = err.response?.data;
+    
+    if (serverErrors) {
+        if (serverErrors.username) {
+            setError(`Username: ${serverErrors.username[0]}`);
+        } else if (serverErrors.email) {
+            setError(`Email: ${serverErrors.email[0]}`);
+        } else if (serverErrors.phone_number) {
+            setError(`Phone: ${serverErrors.phone_number[0]}`);
+        } else if (serverErrors.id_number) {
+            setError("This ID Number is already registered.");
+        } else {
+            setError("Registration failed. Please check your details.");
         }
+    } else {
+        setError("Network error. Please try again later.");
+    }
+    console.error("Full Server Error:", serverErrors);
+}
     };
 
 

@@ -8,6 +8,7 @@ class Vehicle(models.Model):
     capacity = models.IntegerField(default=14)
     current_lat = models.FloatField(null=True, blank=True)
     current_lng = models.FloatField(null=True, blank=True)
+   
 
 class User(AbstractUser):
     """

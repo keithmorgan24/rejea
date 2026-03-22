@@ -1,7 +1,7 @@
 from django.urls import path
 from rejea_app.views import (
     VehicleManagementView,
-     DriverSetupView,
+    DriverSetupView,
     ToggleAvailabilityView,
     ActiveDriverListView,
     DriverProfileView,
@@ -9,7 +9,6 @@ from rejea_app.views import (
     AvailableTripsView,
     BookSeatView,
     MpesaCallbackView,
-    UpdateLocationView,
     TripSeatsView,
     LockSeatView
 

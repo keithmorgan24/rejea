@@ -6,7 +6,7 @@ from .views import (
     UserProfileView, 
     DriverProfileView, 
     DriverSetupView,
-        ToggleAvailabilityView
+    ToggleAvailabilityView
 )
 
 # Import transport-related views from rejea_app
