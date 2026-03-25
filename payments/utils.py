@@ -7,7 +7,7 @@ from rejea_app.models import Transaction, Seat
 
 def get_access_token():
     """Generates the OAuth token required for Daraja APIs."""
-    api_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    api_url = "https://sandbox.safaricom.co.ke/mpesa/c2b/v2/registerurl"
     r = requests.get(api_url, auth=(CONSUMER_KEY, CONSUMER_SECRET))
     return r.json().get('access_token')
 
@@ -38,7 +38,7 @@ def initiate_stk_push(phone_number, amount, seat_id):
     }
 
     headers = {"Authorization": f"Bearer {access_token}"}
-    api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+    api_url = "https://sandbox.safaricom.co.ke/mpesa/c2b/v2/registerurl"
 
     response = requests.post(api_url, json=payload, headers=headers)
     res_data = response.json()

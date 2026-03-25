@@ -9,7 +9,7 @@ const Home = () => {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="flex justify-between items-center px-8 py-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-black italic tracking-tighter text-zinc-900">REJEA SWIFT</h1>
+        <h1 className="text-2xl font-black italic tracking-tighter text-zinc-900">REJEA</h1>
         <div className="flex gap-4">
           <button onClick={() => navigate('/')} className="text-sm font-bold text-zinc-600 hover:text-black transition">Login</button>
           <button 
